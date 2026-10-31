@@ -1,9 +1,9 @@
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { testDatabaseConnection } from "./config/db.js";
 import emailRoutes from "./routes/email.routes.js";
+import emailWorker from "./workers/email.worker.js";
 
 dotenv.config();
 
@@ -20,18 +20,21 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// Email scheduling routes
 app.use("/api/emails", emailRoutes);
 
 async function startServer() {
   try {
     await testDatabaseConnection();
 
+    // Wait until the background worker connects to Redis
+    await emailWorker.waitUntilReady();
+    console.log("Background worker started successfully.");
+
     app.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error("Database connection failed:", error);
+    console.error("Application startup failed:", error);
     process.exit(1);
   }
 }
